@@ -1,4 +1,4 @@
-package cache
+package main
 
 import (
 	"bytes"
@@ -18,15 +18,18 @@ type cacheFile struct {
 	Size int
 }
 
-// LRUCache
+// LRUCache represents a LRU file cache with a max size of 64 MB
 type LRUCache struct {
+	dir      string                  // directory to look for files
 	contents *list.List              // ordered list of files in cache
 	size     int                     // current size of the contents of the cache
 	data     map[string]bytes.Buffer // actual data in the cache, key refers to the filename
 }
 
-func NewLRUCache() *LRUCache {
+// NewLRUCache instantiates a new LRU cache
+func NewLRUCache(dir string) *LRUCache {
 	return &LRUCache{
+		dir:      dir,
 		contents: list.New(),
 		data:     make(map[string]bytes.Buffer),
 	}
@@ -90,7 +93,7 @@ func (c *LRUCache) Get(name string) ([]byte, error) {
 		return data.Bytes(), nil
 	}
 
-	buf, err := getFile(name)
+	buf, err := getFile(c.dir, name)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -101,9 +104,10 @@ func (c *LRUCache) Get(name string) ([]byte, error) {
 
 // getFile looks for the file based on the name and loads it into a buffer which is returned
 // An error is returned in the case of an empty file because we do not plan to cache it
-func getFile(name string) (bytes.Buffer, error) {
+func getFile(dir, name string) (bytes.Buffer, error) {
 	var buf bytes.Buffer
-	fileBytes, err := ioutil.ReadFile(name)
+	// combine the directory and filename when reading
+	fileBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", dir, name))
 	if err != nil {
 		log.Printf("File %s does not exist", err.Error())
 		return buf, fmt.Errorf("Cache error => %s", err.Error())
