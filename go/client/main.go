@@ -41,7 +41,7 @@ func queryServer(address, filename string) error {
 	if err != nil {
 		log.Fatal("Error reading from TCP connection => %s", err.Error())
 	} else if n == 0 { // warn if file is empty
-		log.Println("File %s does not exist on the server")
+		log.Printf("File %s does not exist on the server", filename)
 		conn.Close()
 		return nil
 	}

@@ -117,22 +117,21 @@ func TestGet(t *testing.T) {
 	if x.contents.Front().Value.(cacheFile).Name != "test4" {
 		t.Error("failed to promote queried file")
 	}
+
+	// test non-existant file
+	if _, err = x.Get("non_existent.txt"); err == nil {
+		t.Error("error should be thrown on non-existent file")
+	}
 }
 
 func TestGetFile(t *testing.T) {
-	x := makeTestCache()
-	data, err := x.Get("test.txt")
+	data, err := getFile(".", "test.txt")
 	testData := "123456789\n"
 
 	if err != nil {
 		t.Errorf("test file should be found and returned w/o error, err => %s", err.Error())
 	}
-	if string(data) != testData {
-		t.Errorf("test file should be properly read in, found => %s, expected => %s", string(data), testData)
-	}
-
-	// test non-existant file
-	if _, err = x.Get("non_existent.txt"); err == nil {
-		t.Error("error should be thrown on non-existent file")
+	if data.String() != testData {
+		t.Errorf("test file should be properly read in, found => %s, expected => %s", data.String(), testData)
 	}
 }

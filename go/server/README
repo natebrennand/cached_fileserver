@@ -10,4 +10,6 @@ The reading of the files is done by the cache when it does not find the file in 
 All specified log messages are implemented with the addition of one for when the queried file is too large to enter the cache.
 
 
+Filenames are limited to 1000 characters.
+
 

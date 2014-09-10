@@ -1,12 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"strconv"
+)
+
+const (
+	maxFilenameSize = 1000
 )
 
 // cliArgs checks parses in the CLI arguments and validates them
@@ -41,21 +44,28 @@ func cliArgs() (int, string) {
 // HandleFileRequest parses the file request then queries the cache for the requested file
 func HandleFileRequest(conn net.Conn, cache *LRUCache) {
 	// read in the request
-	var buf bytes.Buffer
-	nRead, err := buf.ReadFrom(conn)
+	buf := make([]byte, maxFilenameSize)
+
+	nRead, err := conn.Read(buf)
 	if err != nil || nRead == 0 {
 		log.Print("Error reading in TCP request from %s => %s", conn.RemoteAddr().String(), err.Error())
 	}
+	log.Printf("Client %s is requesting file %s", conn.RemoteAddr().String(), string(buf))
 
-	log.Printf("Client %s is requesting file %s", conn.RemoteAddr().String(), buf.String())
-	data, err := cache.Get(buf.String())
+	data, err := cache.Get(string(buf))
 	if err != nil {
-		log.Printf("failed to find file => %s", err.Error())
+		log.Printf("failed to find file => '%s'", err.Error())
 	}
 
 	nWritten, err := conn.Write(data)
-	if err != nil || nWritten == 0 {
+	if err != nil {
 		log.Printf("failed to write file to client connection => %s", err.Error())
+	} else if nWritten == 0 {
+		log.Printf("WARN: sending empty file, '%s', to %s", string(buf), conn.RemoteAddr().String())
+	}
+
+	if err := conn.Close(); err != nil {
+		log.Printf("Failed to close client connection to %s => %s", conn.RemoteAddr().String(), err.Error())
 	}
 }
 

@@ -5,8 +5,8 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 )
 
 const (
@@ -64,6 +64,7 @@ func (c *LRUCache) promote(name string) error {
 func (c *LRUCache) set(name string, data *bytes.Buffer) error {
 	// don't attempt to cache if too large
 	if data.Len() > maxCacheSize {
+		log.Printf("Rejected file %s from entering the cache due to size limitations", name)
 		return nil
 	}
 
@@ -105,15 +106,16 @@ func (c *LRUCache) Get(name string) ([]byte, error) {
 // getFile looks for the file based on the name and loads it into a buffer which is returned
 // An error is returned in the case of an empty file because we do not plan to cache it
 func getFile(dir, name string) (bytes.Buffer, error) {
+	filename := fmt.Sprintf("%s/%s", dir, name) // combine the directory and filename when reading
+
 	var buf bytes.Buffer
-	// combine the directory and filename when reading
-	fileBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", dir, name))
+	file, err := os.Open(filename)
 	if err != nil {
-		log.Printf("File %s does not exist", err.Error())
+		log.Printf("File '%s' does not exist", filename)
 		return buf, fmt.Errorf("Cache error => %s", err.Error())
 	}
 
-	n, err := buf.Write(fileBytes)
+	n, err := buf.ReadFrom(file)
 	if n == 0 {
 		return buf, errors.New("No data found in file")
 	} else if err != nil {
