@@ -6,7 +6,7 @@ import (
 )
 
 func makeTestCache() *LRUCache {
-	c := NewLRUCache()
+	c := NewLRUCache(".")
 	c.contents.PushFront(cacheFile{
 		Name: "test1",
 		Size: 10,
