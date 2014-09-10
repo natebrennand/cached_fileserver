@@ -1,0 +1,13 @@
+
+Cache System
+---
+
+The cache system is implemented per the spec. It follows the guidance from Mathias on Piazza to not evict any members of the cache in the case that the file is > 64 MB.
+In the case that adding the file would push the size of the cache over 64MB, the last used files are evicted from the cache until there is sufficient space.
+
+The reading of the files is done by the cache when it does not find the file in the cache.
+
+All specified log messages are implemented with the addition of one for when the queried file is too large to enter the cache.
+
+
+

@@ -67,7 +67,7 @@ func (c *LRUCache) set(name string, data *bytes.Buffer) error {
 	// pop items until enough space
 	for data.Len()+c.size > maxCacheSize {
 		if err := c.pop(); err != nil {
-			log.Printf("Rejected file, %s, from entering the cache due to size limitations", name)
+			log.Printf("Rejected file %s from entering the cache due to size limitations", name)
 		}
 	}
 
@@ -86,6 +86,7 @@ func (c *LRUCache) Get(name string) ([]byte, error) {
 	data, exists := c.data[name]
 	if exists {
 		c.promote(name)
+		log.Printf("Cache hit. File %s sent to the client", name)
 		return data.Bytes(), nil
 	}
 
@@ -94,6 +95,7 @@ func (c *LRUCache) Get(name string) ([]byte, error) {
 		return []byte{}, err
 	}
 
+	log.Printf("Cache miss. File %s sent to the client", name)
 	return buf.Bytes(), c.set(name, &buf)
 }
 
@@ -103,6 +105,7 @@ func getFile(name string) (bytes.Buffer, error) {
 	var buf bytes.Buffer
 	fileBytes, err := ioutil.ReadFile(name)
 	if err != nil {
+		log.Printf("File %s does not exist", err.Error())
 		return buf, fmt.Errorf("Cache error => %s", err.Error())
 	}
 
