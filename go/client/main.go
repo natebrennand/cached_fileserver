@@ -1,13 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"strconv"
+)
+
+const (
+	bufferSize = 8 * 1000 * 1000
 )
 
 // cliArgs checks parses in the CLI arguments and validates them
@@ -29,31 +31,30 @@ func cliArgs() (string, int, string) {
 }
 
 func queryServer(address, filename string) error {
+	// open the tcp connection
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		log.Fatalf("Failed to open TCP connection => %s", err.Error())
 	}
+	defer conn.Close()
+	fmt.Fprintf(conn, filename) // sends filename to server
 
-	fmt.Fprintf(conn, filename)
-
-	var buf bytes.Buffer
-	n, err := buf.ReadFrom(conn)
+	// open a new file to write the data to
+	dlFile, err := os.Create(filename)
 	if err != nil {
-		log.Fatal("Error reading from TCP connection => %s", err.Error())
-	} else if n == 0 { // warn if file is empty
-		log.Printf("File %s does not exist on the server", filename)
-		conn.Close()
-		return nil
+		log.Fatalf("Cannot open file => %s", err.Error())
 	}
-	if err := conn.Close(); err != nil {
-		log.Printf("Failed to close connection => %s", err.Error())
+	defer dlFile.Close()
+	buf := make([]byte, bufferSize)
+
+	// read from the connection into the buffer and write to the new file
+	n, err := conn.Read(buf)
+	for err == nil && n > 0 {
+		dlFile.Write(buf)
+		n, err = conn.Read(buf)
 	}
 
-	if err = ioutil.WriteFile(filename, buf.Bytes(), 0644); err != nil {
-		log.Fatalf("failed to write file => %s", err.Error())
-	}
 	log.Printf("%s saved", filename)
-
 	return nil
 }
 

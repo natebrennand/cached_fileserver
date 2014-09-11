@@ -43,29 +43,19 @@ func cliArgs() (int, string) {
 
 // HandleFileRequest parses the file request then queries the cache for the requested file
 func HandleFileRequest(conn net.Conn, cache *LRUCache) {
-	// read in the request
+	defer conn.Close()
 	buf := make([]byte, maxFilenameSize)
 
+	// read in the request
 	nRead, err := conn.Read(buf)
+	filename := string(buf)
 	if err != nil || nRead == 0 {
-		log.Print("Error reading in TCP request from %s => %s", conn.RemoteAddr().String(), err.Error())
-	}
-	log.Printf("Client %s is requesting file %s", conn.RemoteAddr().String(), string(buf))
-
-	data, err := cache.Get(string(buf))
-	if err != nil {
-		log.Printf("failed to find file => '%s'", err.Error())
+		log.Printf("Error reading in TCP request from %s => %s", conn.RemoteAddr().String(), err.Error())
 	}
 
-	nWritten, err := conn.Write(data)
-	if err != nil {
-		log.Printf("failed to write file to client connection => %s", err.Error())
-	} else if nWritten == 0 {
-		log.Printf("WARN: sending empty file, '%s', to %s", string(buf), conn.RemoteAddr().String())
-	}
-
-	if err := conn.Close(); err != nil {
-		log.Printf("Failed to close client connection to %s => %s", conn.RemoteAddr().String(), err.Error())
+	log.Printf("Client %s is requesting file %s", conn.RemoteAddr().String(), filename)
+	if err := cache.WriteToConn(conn, filename); err != nil {
+		log.Printf("Failed to write to client connection => %s", err.Error())
 	}
 }
 

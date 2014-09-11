@@ -1,4 +1,23 @@
 
+Nate Brennand
+nsb2142
+Distributed Systems HW #1
+
+
+Client
+---
+The client is implement exactly as specified.
+There is an implicit assumption that when no data is sent by the server before closing the connection that the file was not found.
+
+
+Server
+---
+The server implements the spec as specified.
+It is effectively multithreaded via go-routines (managed by the go runtime).
+
+The server was tested with files up to 12 GB successfully.
+
+
 Cache System
 ---
 
@@ -6,10 +25,8 @@ The cache system is implemented per the spec. It follows the guidance from Mathi
 In the case that adding the file would push the size of the cache over 64MB, the last used files are evicted from the cache until there is sufficient space.
 
 The reading of the files is done by the cache when it does not find the file in the cache.
-
 All specified log messages are implemented with the addition of one for when the queried file is too large to enter the cache.
 
-
-Filenames are limited to 1000 characters.
+Filenames are limited to 1000 characters when read in from the connecting client.
 
 

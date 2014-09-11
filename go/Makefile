@@ -11,8 +11,4 @@ client:
 	go build -o tcp_client && \
 	mv tcp_client ..
 
-clean:
-	go clean
-
-
 .PHONY: all server client clean

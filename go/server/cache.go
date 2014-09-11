@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 )
 
 const (
-	maxCacheSize = 64000000
+	maxCacheSize = 64 * 1000 * 1000
+	bufferSize   = 8 * 1000 * 1000
 )
 
 type cacheFile struct {
@@ -84,30 +86,55 @@ func (c *LRUCache) set(name string, data *bytes.Buffer) error {
 	return nil
 }
 
-// Get returns a byte array of the requested file.
-// The cache will be updated in the background.
-func (c *LRUCache) Get(name string) ([]byte, error) {
+// WriteToConn writes the specified file to the network connection passed in
+func (c *LRUCache) WriteToConn(conn net.Conn, name string) error {
+	filename := fmt.Sprintf("%s/%s", c.dir, name)
+
 	data, exists := c.data[name]
 	if exists {
 		c.promote(name)
 		log.Printf("Cache hit. File %s sent to the client", name)
-		return data.Bytes(), nil
+		_, err := conn.Write(data.Bytes())
+		return err
 	}
 
-	buf, err := getFile(c.dir, name)
+	// write the file to the connection
+	file, err := os.Open(filename)
 	if err != nil {
-		return []byte{}, err
+		return err
+	}
+
+	buf := make([]byte, bufferSize)
+	n, err := file.Read(buf)
+	for err == nil && n > 0 {
+		conn.Write(buf)
+		n, err = file.Read(buf)
+	}
+	file.Close()
+
+	// see if file should be cached
+	fi, err := os.Stat(filename)
+	if err != nil {
+		// will not attempt to cache
+		log.Printf("Error reading file stats for %s => %s", filename, err.Error())
+		return nil
+	} else if fi.Size() <= maxCacheSize { // if file can fit in the cache
+		buf, err := getFile(filename)
+		if err != nil {
+			// will drop attempt to cache
+			log.Printf("WARN: Error reading in file for caching => %s", err.Error())
+			return nil
+		}
+		c.set(name, &buf)
 	}
 
 	log.Printf("Cache miss. File %s sent to the client", name)
-	return buf.Bytes(), c.set(name, &buf)
+	return nil
 }
 
 // getFile looks for the file based on the name and loads it into a buffer which is returned
 // An error is returned in the case of an empty file because we do not plan to cache it
-func getFile(dir, name string) (bytes.Buffer, error) {
-	filename := fmt.Sprintf("%s/%s", dir, name) // combine the directory and filename when reading
-
+func getFile(filename string) (bytes.Buffer, error) {
 	var buf bytes.Buffer
 	file, err := os.Open(filename)
 	if err != nil {
