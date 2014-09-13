@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net"
@@ -44,14 +45,14 @@ func cliArgs() (int, string) {
 // HandleFileRequest parses the file request then queries the cache for the requested file
 func HandleFileRequest(conn net.Conn, cache *LRUCache) {
 	defer conn.Close()
-	buf := make([]byte, maxFilenameSize)
 
 	// read in the request
-	nRead, err := conn.Read(buf)
-	filename := string(buf)
-	if err != nil || nRead == 0 {
-		log.Printf("Error reading in TCP request from %s => %s", conn.RemoteAddr().String(), err.Error())
+	scanner := bufio.NewScanner(conn)
+	if !scanner.Scan() {
+		log.Printf("Error reading in TCP request from %s => %s", conn.RemoteAddr().String(), scanner.Err().Error())
+		return
 	}
+	filename := scanner.Text()
 
 	log.Printf("Client %s is requesting file %s", conn.RemoteAddr().String(), filename)
 	if err := cache.WriteToConn(conn, filename); err != nil {

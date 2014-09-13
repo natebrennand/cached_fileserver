@@ -3,4 +3,6 @@
 # binaries
 tcp_server
 tcp_client
+server
+client
 

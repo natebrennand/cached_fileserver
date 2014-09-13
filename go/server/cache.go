@@ -5,9 +5,10 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
+	"io"
 	"log"
-	"net"
 	"os"
+	"path"
 )
 
 const (
@@ -87,8 +88,13 @@ func (c *LRUCache) set(name string, data *bytes.Buffer) error {
 }
 
 // WriteToConn writes the specified file to the network connection passed in
-func (c *LRUCache) WriteToConn(conn net.Conn, name string) error {
-	filename := fmt.Sprintf("%s/%s", c.dir, name)
+func (c *LRUCache) WriteToConn(conn io.Writer, name string) error {
+	filename := path.Join(c.dir, name)
+	matchParent, err1 := path.Match("../*", filename)
+	matchRoot, err2 := path.Match("/*", filename)
+	if matchParent || matchRoot || err1 != nil || err2 != nil {
+		return errors.New("Illegal file, cannot be in parent dir")
+	}
 
 	data, exists := c.data[name]
 	if exists {
@@ -101,16 +107,17 @@ func (c *LRUCache) WriteToConn(conn net.Conn, name string) error {
 	// write the file to the connection
 	file, err := os.Open(filename)
 	if err != nil {
-		return err
+		log.Printf("%#v\n", err)
+		return fmt.Errorf("Error opening file => %s", err.Error())
 	}
+	defer file.Close()
 
-	buf := make([]byte, bufferSize)
-	n, err := file.Read(buf)
-	for err == nil && n > 0 {
-		conn.Write(buf)
-		n, err = file.Read(buf)
+	for {
+		n, err := io.Copy(conn, file)
+		if n == 0 || err == io.EOF || err != nil {
+			break
+		}
 	}
-	file.Close()
 
 	// see if file should be cached
 	fi, err := os.Stat(filename)
@@ -141,12 +148,15 @@ func getFile(filename string) (bytes.Buffer, error) {
 		log.Printf("File '%s' does not exist", filename)
 		return buf, fmt.Errorf("Cache error => %s", err.Error())
 	}
+	defer file.Close()
 
 	n, err := buf.ReadFrom(file)
-	if n == 0 {
-		return buf, errors.New("No data found in file")
-	} else if err != nil {
+
+	if err != nil {
 		return buf, fmt.Errorf("Failure to read in file data => %s", err.Error())
+	} else if n == 0 {
+		log.Println(n, err)
+		return buf, errors.New("No data found in file")
 	}
 
 	return buf, nil

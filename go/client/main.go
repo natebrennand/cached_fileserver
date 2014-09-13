@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
+	"path"
 	"strconv"
 )
 
@@ -38,6 +40,9 @@ func queryServer(address, filename string) error {
 	}
 	defer conn.Close()
 	fmt.Fprintf(conn, filename) // sends filename to server
+	fmt.Fprintf(conn, "\n")
+
+	filename = path.Base(filename)
 
 	// open a new file to write the data to
 	dlFile, err := os.Create(filename)
@@ -45,13 +50,19 @@ func queryServer(address, filename string) error {
 		log.Fatalf("Cannot open file => %s", err.Error())
 	}
 	defer dlFile.Close()
-	buf := make([]byte, bufferSize)
 
 	// read from the connection into the buffer and write to the new file
-	n, err := conn.Read(buf)
-	for err == nil && n > 0 {
-		dlFile.Write(buf)
-		n, err = conn.Read(buf)
+	n, err := io.Copy(dlFile, conn)
+	if err != nil || n == 0 { // check for no file
+		log.Printf("File %s does not exist", filename)
+		os.Remove(filename)
+		return nil
+	}
+	for { // read the whole file in
+		if err != nil || n == 0 {
+			break
+		}
+		n, err = io.Copy(dlFile, conn)
 	}
 
 	log.Printf("%s saved", filename)

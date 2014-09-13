@@ -106,10 +106,11 @@ func TestGet(t *testing.T) {
 	}
 
 	// test that proper data is returned
-	data, err := x.Get("test4")
+	var writeBuffer bytes.Buffer
+	err := x.WriteToConn(&writeBuffer, "test4")
 	if err != nil {
 		t.Fatal("failed to retrieve data from cache")
-	} else if string(data) != buf.String() {
+	} else if writeBuffer.String() != buf.String() {
 		t.Fatal("failed to retrieve correct data from cache")
 	}
 
@@ -119,13 +120,14 @@ func TestGet(t *testing.T) {
 	}
 
 	// test non-existant file
-	if _, err = x.Get("non_existent.txt"); err == nil {
+	writeBuffer.Reset()
+	if err = x.WriteToConn(&writeBuffer, "non_existent.txt"); err == nil {
 		t.Error("error should be thrown on non-existent file")
 	}
 }
 
 func TestGetFile(t *testing.T) {
-	data, err := getFile(".", "test.txt")
+	data, err := getFile("./test.txt")
 	testData := "123456789\n"
 
 	if err != nil {
