@@ -16,6 +16,7 @@ const (
 	bufferSize   = 8 * 1000 * 1000
 )
 
+// cacheFile is an abstraction for the list of contents in the cache
 type cacheFile struct {
 	Name string
 	Size int
@@ -23,10 +24,10 @@ type cacheFile struct {
 
 // LRUCache represents a LRU file cache with a max size of 64 MB
 type LRUCache struct {
-	dir      string                  // directory to look for files
-	contents *list.List              // ordered list of files in cache
-	size     int                     // current size of the contents of the cache
-	data     map[string]bytes.Buffer // actual data in the cache, key refers to the filename
+	dir      string            // directory to look for files
+	contents *list.List        // ordered list of files in cache
+	size     int               // current size of the contents of the cache
+	data     map[string][]byte // actual data in the cache, key refers to the filepath
 }
 
 // NewLRUCache instantiates a new LRU cache
@@ -34,7 +35,7 @@ func NewLRUCache(dir string) *LRUCache {
 	return &LRUCache{
 		dir:      dir,
 		contents: list.New(),
-		data:     make(map[string]bytes.Buffer),
+		data:     make(map[string][]byte),
 	}
 }
 
@@ -78,7 +79,8 @@ func (c *LRUCache) set(name string, data *bytes.Buffer) error {
 		}
 	}
 
-	c.data[name] = *data
+	// add itm to cache
+	c.data[name] = data.Bytes()
 	c.size += data.Len()
 	c.contents.PushFront(cacheFile{
 		Name: name,
@@ -87,8 +89,9 @@ func (c *LRUCache) set(name string, data *bytes.Buffer) error {
 	return nil
 }
 
-// WriteToConn writes the specified file to the network connection passed in
-func (c *LRUCache) WriteToConn(conn io.Writer, name string) error {
+// WriteFile writes the specified file to the io.Writer passed in
+func (c *LRUCache) WriteFile(conn io.Writer, name string) error {
+	// check for malicious filepaths
 	filename := path.Join(c.dir, name)
 	matchParent, err1 := path.Match("../*", filename)
 	matchRoot, err2 := path.Match("/*", filename)
@@ -96,15 +99,16 @@ func (c *LRUCache) WriteToConn(conn io.Writer, name string) error {
 		return errors.New("Illegal file, cannot be in parent dir")
 	}
 
+	// attempt to get file from the cache
 	data, exists := c.data[name]
 	if exists {
 		c.promote(name)
 		log.Printf("Cache hit. File %s sent to the client", name)
-		_, err := conn.Write(data.Bytes())
+		_, err := conn.Write(data)
 		return err
 	}
 
-	// write the file to the connection
+	// get the file and write to the connection
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Printf("%#v\n", err)
@@ -118,6 +122,7 @@ func (c *LRUCache) WriteToConn(conn io.Writer, name string) error {
 			break
 		}
 	}
+	log.Printf("Cache miss. File %s sent to the client", name)
 
 	// see if file should be cached
 	fi, err := os.Stat(filename)
@@ -135,7 +140,6 @@ func (c *LRUCache) WriteToConn(conn io.Writer, name string) error {
 		c.set(name, &buf)
 	}
 
-	log.Printf("Cache miss. File %s sent to the client", name)
 	return nil
 }
 
@@ -151,7 +155,6 @@ func getFile(filename string) (bytes.Buffer, error) {
 	defer file.Close()
 
 	n, err := buf.ReadFrom(file)
-
 	if err != nil {
 		return buf, fmt.Errorf("Failure to read in file data => %s", err.Error())
 	} else if n == 0 {

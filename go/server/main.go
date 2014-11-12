@@ -13,29 +13,28 @@ const (
 	maxFilenameSize = 1000
 )
 
+func die(reason string) {
+	log.Printf(reason)
+	log.Println("usuage: ./tcp_server <port> <path to serving directory>")
+	os.Exit(1)
+}
+
 // cliArgs checks parses in the CLI arguments and validates them
 func cliArgs() (int, string) {
 	if len(os.Args) != 3 {
-		log.Println("usuage: ./tcp_server <port> <path to serving directory>")
-		os.Exit(1)
+		die("2 arguments required")
 	}
 
 	port, err := strconv.ParseInt(os.Args[1], 10, 64)
 	if err != nil {
-		log.Println("usuage: ./tcp_server <port> <path to serving directory>")
-		log.Println("the port provided must be an integer")
-		os.Exit(1)
+		die("the port provided must be an integer")
 	}
 
 	fi, err := os.Stat(os.Args[2])
 	if err != nil {
-		log.Printf("Error examining directory => %s", err.Error())
-		log.Println("usuage: ./tcp_server <port> <path to serving directory>")
-		os.Exit(1)
+		die(fmt.Sprintf("Error examining directory => %s\n", err.Error()))
 	} else if !fi.IsDir() {
-		log.Printf("path provided is not a directory")
-		log.Println("usuage: ./tcp_server <port> <path to serving directory>")
-		os.Exit(1)
+		die("path provided is not a directory")
 	}
 
 	// NOTE: we use Name() to standardize to a dir name w/o a trailing slash
@@ -52,16 +51,16 @@ func HandleFileRequest(conn net.Conn, cache *LRUCache) {
 		log.Printf("Error reading in TCP request from %s => %s", conn.RemoteAddr().String(), scanner.Err().Error())
 		return
 	}
-	filename := scanner.Text()
+	filename := scanner.Text() // grab the first string from the scanner
 
 	log.Printf("Client %s is requesting file %s", conn.RemoteAddr().String(), filename)
-	if err := cache.WriteToConn(conn, filename); err != nil {
+	if err := cache.WriteFile(conn, filename); err != nil {
 		log.Printf("Failed to write to client connection => %s", err.Error())
 	}
 }
 
 func main() {
-	// set up arguments and cache
+	// set up arguments and instantiate cache
 	port, dir := cliArgs()
 	cache := NewLRUCache(dir)
 
@@ -78,6 +77,6 @@ func main() {
 		if err != nil {
 			log.Printf("Failed to open client connection to %s => %s", conn.RemoteAddr().String(), err.Error())
 		}
-		go HandleFileRequest(conn, cache)
+		go HandleFileRequest(conn, cache) // start a go-routine to handle the request
 	}
 }

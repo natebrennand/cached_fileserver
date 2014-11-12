@@ -107,7 +107,7 @@ func TestGet(t *testing.T) {
 
 	// test that proper data is returned
 	var writeBuffer bytes.Buffer
-	err := x.WriteToConn(&writeBuffer, "test4")
+	err := x.WriteFile(&writeBuffer, "test4")
 	if err != nil {
 		t.Fatal("failed to retrieve data from cache")
 	} else if writeBuffer.String() != buf.String() {
@@ -121,7 +121,7 @@ func TestGet(t *testing.T) {
 
 	// test non-existant file
 	writeBuffer.Reset()
-	if err = x.WriteToConn(&writeBuffer, "non_existent.txt"); err == nil {
+	if err = x.WriteFile(&writeBuffer, "non_existent.txt"); err == nil {
 		t.Error("error should be thrown on non-existent file")
 	}
 }

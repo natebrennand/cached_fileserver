@@ -3,6 +3,10 @@ Nate Brennand
 nsb2142
 Distributed Systems HW #1
 
+Building
+---
+`Make` will generate both "tcp_server" and "tcp_client" binaries in the "go" directory.
+
 
 Client
 ---
@@ -32,6 +36,8 @@ In the case that adding the file would push the size of the cache over 64MB, the
 
 The reading of the files is done by the cache when it does not find the file in the cache.
 All specified log messages are implemented with the addition of one for when the queried file is too large to enter the cache.
+
+The pointers to byte arrays in the cache are not counted in the size of the cache.
 
 
 Tests

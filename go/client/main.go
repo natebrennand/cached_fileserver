@@ -14,22 +14,26 @@ const (
 	bufferSize = 8 * 1000 * 1000
 )
 
+func die(reason string) {
+	log.Printf(reason)
+	log.Println("usuage: ./tcp_client <ip> <port> <filename>")
+	os.Exit(1)
+}
+
 // cliArgs checks parses in the CLI arguments and validates them
 func cliArgs() (string, int, string) {
 	if len(os.Args) != 4 {
-		log.Println("usuage: ./tcp_client <ip> <port> <filename>")
-		os.Exit(1)
+		die("3 arguments required")
 	}
 
 	// validate port
 	port, err := strconv.ParseInt(os.Args[2], 10, 64)
 	if err != nil {
-		log.Println("usuage: ./tcp_client <ip> <port> <filename>")
-		log.Println("the port provided must be an integer")
-		os.Exit(1)
+		die("the port provided must be an integer")
 	}
 
-	return os.Args[1], int(port), os.Args[3]
+	ip, filename := os.Args[1], os.Args[3]
+	return ip, int(port), filename
 }
 
 func queryServer(address, filename string) error {
@@ -39,12 +43,13 @@ func queryServer(address, filename string) error {
 		log.Fatalf("Failed to open TCP connection => %s", err.Error())
 	}
 	defer conn.Close()
-	fmt.Fprintf(conn, filename) // sends filename to server
+
+	// sends filename to server
+	fmt.Fprintf(conn, filename)
 	fmt.Fprintf(conn, "\n")
 
-	filename = path.Base(filename)
-
 	// open a new file to write the data to
+	filename = path.Base(filename) // strip filename of directory
 	dlFile, err := os.Create(filename)
 	if err != nil {
 		log.Fatalf("Cannot open file => %s", err.Error())
@@ -58,14 +63,16 @@ func queryServer(address, filename string) error {
 		os.Remove(filename)
 		return nil
 	}
-	for { // read the whole file in
+
+	// read the whole file in
+	for {
 		if err != nil || n == 0 {
 			break
 		}
 		n, err = io.Copy(dlFile, conn)
 	}
 
-	log.Printf("%s saved", filename)
+	log.Printf("File %s saved", filename)
 	return nil
 }
 
