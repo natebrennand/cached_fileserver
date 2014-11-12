@@ -1,11 +1,13 @@
 
 Nate Brennand
 nsb2142
-Distributed Systems HW #1
+
 
 Building
 ---
 `Make` will generate both "tcp_server" and "tcp_client" binaries in the "go" directory.
+
+
 
 
 Client
@@ -14,6 +16,8 @@ The client is implement exactly as specified.
 A newline is sent to signify the end of the filename.
 There is an implicit assumption made by the client that when no data is sent by the server before closing the connection that the file was not found.
 There will be no data returned for invalid requests that ask for data outside the served directory.
+
+
 
 
 Server
@@ -28,6 +32,8 @@ The path is normalized by the "path" package beforehand.
 The server was tested with filesizes up to 12 GB successfully.
 
 
+
+
 Cache System
 ---
 
@@ -40,10 +46,14 @@ All specified log messages are implemented with the addition of one for when the
 The pointers to byte arrays in the cache are not counted in the size of the cache.
 
 
+
+
 Tests
 ---
 There are some tests to prove the cache's functionality.
 They can be invoked by running `go test` in the "server" directory or `go test ./...` from the "go" directory.
+
+
 
 
 Go Version
